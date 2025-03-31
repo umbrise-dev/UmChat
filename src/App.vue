@@ -1,5 +1,5 @@
 <template>
-  <h1>💖 Hello World!</h1>
+  <h1 class="text-3xl font-bold bg-sky-300">💖 Hello World!</h1>
   <p>Welcome to your Electron application.</p>
 </template>
 
