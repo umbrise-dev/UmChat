@@ -28,7 +28,22 @@
 
 import './index.css';
 import { createApp } from 'vue';
+import { createRouter, createMemoryHistory } from 'vue-router';
 import App from './App.vue';
+import Home from './views/Home.vue';
+import Settings from './views/Settings.vue';
+import Conversation from './views/Conversation.vue';
+
+const routes = [
+  { path: '/', component: Home },
+  { path: '/conversation', component: Conversation },
+  { path: '/settings', component: Settings },
+]
+const router = createRouter({
+  history: createMemoryHistory(),
+  routes
+})
 
 const app = createApp(App);
+app.use(router);
 app.mount('#app');
