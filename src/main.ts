@@ -1,3 +1,4 @@
+import { ChatCompletion } from '@baiducloud/qianfan';
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 
@@ -6,7 +7,7 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-const createWindow = () => {
+const createWindow = async () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1024,
@@ -25,6 +26,14 @@ const createWindow = () => {
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
+
+  const client = new ChatCompletion()
+  const resp = await client.chat({
+    messages: [
+      { role: 'user', content: '你是一只猫娘。' },
+    ]
+  }, 'ERNIE-Speed-128K')
+  console.log(resp)
 };
 
 // This method will be called when Electron has finished
