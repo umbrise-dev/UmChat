@@ -43,7 +43,9 @@
   "license": "MIT",
   "dependencies": {
     "@baiducloud/qianfan": "^0.2.3",
+    "dotenv": "^16.4.7",
     "electron-squirrel-startup": "^1.0.1",
+    "openai": "^4.91.1",
     "radix-vue": "^1.9.17",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
