@@ -3,7 +3,8 @@ import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import 'dotenv/config'
 import OpenAI from 'openai';
-import fs from 'fs/promises';
+import fs from 'fs';
+// import fs from 'fs/promises';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -34,19 +35,33 @@ const createWindow = async () => {
     apiKey: process.env['ALI_API_KEY'],
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   })
-  const imageBuffer = await fs.readFile('./image.png')
-  const base64Image = imageBuffer.toString('base64')
+  const fileObj = await client.files.create({
+    file: fs.createReadStream('./1.pdf'),
+    purpose: 'file-extract' as any,
+  })
   const response = await client.chat.completions.create({
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'text', text: '图中有什么？' },
-        { type: 'image_url', image_url: { url: `data:image/png;base64,${base64Image}` } },
-      ]
-    }],
-    model: 'qwen-vl-plus',
+    messages: [
+      { role: 'system', content: '你是一只猫娘。' },
+      { role: 'system', content: `fileid://${fileObj.id}` },
+      { role: 'user', content: '概括一下文件内容。' },
+    ],
+    model: 'qwen-long',
   })
   console.log(response.choices[0].message)
+
+  // const imageBuffer = await fs.readFile('./image.png')
+  // const base64Image = imageBuffer.toString('base64')
+  // const response = await client.chat.completions.create({
+  //   messages: [{
+  //     role: 'user',
+  //     content: [
+  //       { type: 'text', text: '图中有什么？' },
+  //       { type: 'image_url', image_url: { url: `data:image/png;base64,${base64Image}` } },
+  //     ]
+  //   }],
+  //   model: 'qwen-vl-plus',
+  // })
+  // console.log(response.choices[0].message)
 
   // const stream = await client.chat.completions.create({
   //   messages: [
