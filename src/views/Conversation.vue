@@ -15,22 +15,24 @@
 import MessageInput from '@/components/MessageInput.vue'
 import MessageList from '@/components/MessageList.vue';
 import { useRoute } from 'vue-router';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { ConversationProps, MessageProps, MessageStatus } from '@/types';
 import { watch } from 'vue';
 import { db } from '@/db';
+import { useConversationStore } from '@/stores/conversation';
 
 const route = useRoute()
-let conversationId = parseInt(route.params.id as string)
+const conversationStore = useConversationStore()
+let conversationId = ref(parseInt(route.params.id as string))
 const filteredMessages = ref<MessageProps[]>([])
-const conversation = ref<ConversationProps>()
+const conversation = computed(() => conversationStore.getConversationById(conversationId.value))
 const initMessageId = parseInt(route.query.init as string)
 let lastQuestion = ''
 
 const creatingInitialMessage = async () => {
   const createdData: Omit<MessageProps, 'id'> = {
     content: '',
-    conversationId,
+    conversationId: conversationId.value,
     type: 'answer',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -52,16 +54,14 @@ const creatingInitialMessage = async () => {
 }
 
 watch(() => route.params.id, async (newId: string) => {
-  conversationId = parseInt(newId)
-  conversation.value = await db.conversations.where({ id: conversationId }).first()
-  filteredMessages.value = await db.messages.where({ conversationId }).toArray()
+  conversationId.value = parseInt(newId)
+  filteredMessages.value = await db.messages.where({ conversationId: conversationId.value }).toArray()
 })
 
 onMounted(async () => {
-  conversation.value = await db.conversations.where({ id: conversationId }).first()
-  filteredMessages.value = await db.messages.where({ conversationId }).toArray()
+  filteredMessages.value = await db.messages.where({ conversationId: conversationId.value }).toArray()
   if (initMessageId) {
-    const lastMessage = await db.messages.where({ conversationId }).last()
+    const lastMessage = await db.messages.where({ conversationId: conversationId.value }).last()
     lastQuestion = lastMessage?.content || ''
     await creatingInitialMessage()
   }

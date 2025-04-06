@@ -35,6 +35,6 @@ const items = computed(() => conversationStore.items)
 
 onMounted(async() => {
   await initProviders()
-  conversationStore.items = await db.conversations.toArray()
+  conversationStore.fetchConversations()
 })
 </script>
