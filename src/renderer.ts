@@ -33,6 +33,7 @@ import App from './App.vue';
 import Home from './views/Home.vue';
 import Settings from './views/Settings.vue';
 import Conversation from './views/Conversation.vue';
+import { createPinia } from 'pinia';
 
 const routes = [
   { path: '/', component: Home },
@@ -43,7 +44,9 @@ const router = createRouter({
   history: createMemoryHistory(),
   routes
 })
+const pinia = createPinia()
 
 const app = createApp(App);
 app.use(router);
+app.use(pinia);
 app.mount('#app');
