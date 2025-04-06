@@ -16,7 +16,7 @@ import MessageInput from '@/components/MessageInput.vue'
 import MessageList from '@/components/MessageList.vue';
 import { useRoute } from 'vue-router';
 import { onMounted, ref } from 'vue';
-import { ConversationProps, MessageProps } from '@/types';
+import { ConversationProps, MessageProps, MessageStatus } from '@/types';
 import { watch } from 'vue';
 import { db } from '@/db';
 
@@ -25,6 +25,7 @@ let conversationId = parseInt(route.params.id as string)
 const filteredMessages = ref<MessageProps[]>([])
 const conversation = ref<ConversationProps>()
 const initMessageId = parseInt(route.query.init as string)
+let lastQuestion = ''
 
 const creatingInitialMessage = async () => {
   const createdData: Omit<MessageProps, 'id'> = {
@@ -37,6 +38,17 @@ const creatingInitialMessage = async () => {
   }
   const newMessageId = await db.messages.add(createdData)
   filteredMessages.value.push({ id: newMessageId, ...createdData })
+  if (conversation.value) {
+    const provider = await db.providers.where({ id: conversation.value.providerId }).first()
+    if (provider) {
+      await window.electronAPI.startChat({
+        messageId: newMessageId,
+        providerName: provider.name,
+        selectedModel: conversation.value.selectedModel,
+        content: lastQuestion
+      })
+    }
+  }
 }
 
 watch(() => route.params.id, async (newId: string) => {
@@ -49,7 +61,27 @@ onMounted(async () => {
   conversation.value = await db.conversations.where({ id: conversationId }).first()
   filteredMessages.value = await db.messages.where({ conversationId }).toArray()
   if (initMessageId) {
+    const lastMessage = await db.messages.where({ conversationId }).last()
+    lastQuestion = lastMessage?.content || ''
     await creatingInitialMessage()
   }
+
+  window.electronAPI.onUpdateMessage(async (streamData) => {
+    console.log('streamData', streamData)
+    const { messageId, data } = streamData
+    const currentMessage = await db.messages.where({ id: messageId }).first()
+    if (currentMessage) {
+      const updatedData = {
+        content: currentMessage.content + data.result,
+        status: data.is_end ? 'finished': 'streaming' as MessageStatus,
+        updatedAt: new Date().toISOString(),
+      }
+      await db.messages.update(messageId, updatedData)
+      const index = filteredMessages.value.findIndex(item => item.id === messageId)
+      if (index !== -1) {
+        filteredMessages.value[index] = { ...filteredMessages.value[index], ...updatedData }
+      }
+    }
+  })
 })
 </script>
