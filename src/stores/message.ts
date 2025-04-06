@@ -30,6 +30,7 @@ export const useMessageStore = defineStore('message', {
           content: currentMessage.content + data.result,
           status: data.is_end? 'finished' : 'streaming' as MessageStatus,
           updatedAt: new Date().toISOString(),
+          ...(!data.is_end && { content: currentMessage.content + data.result }),
         }
         await db.messages.update(messageId, updatedData)
         const index = this.items.findIndex(item => item.id === messageId)
