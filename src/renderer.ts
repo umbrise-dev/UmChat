@@ -27,6 +27,7 @@
  */
 
 import './index.css';
+import 'highlight.js/styles/github-dark.min.css';
 import { createApp } from 'vue';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import App from './App.vue';
