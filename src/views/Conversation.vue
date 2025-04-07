@@ -1,46 +1,44 @@
 <template>
-  <div class="h-[10%] bg-gray-200 border-b border-gray-300 flex items-center px-3 justify-between">
-    <h3 class="font-semibold text-gray-900">{{ conversation?.title }}</h3>
-    <span class="text-sm text-gray-500">{{ conversation?.updatedAt }}</span>
+  <div class="h-[10%] bg-gray-200 border-b border-gray-300 flex items-center px-3 justify-between" v-if="conversation">
+    <h3 class="font-semibold  text-gray-900">{{ conversation.title }}</h3>
+    <span class="text-sm text-gray-500">{{ conversation.updatedAt }}</span>
   </div>
-  <div class="w-[80%] mx-auto h-[85%] overflow-y-auto pt-2">
-    <MessageList :messages="filteredMessages"/>
+  <div class="w-[80%] mx-auto h-[75%] overflow-y-auto pt-2">
+    <MessageList :messages="filteredMessages" ref="messageListRef" />
   </div>
   <div class="w-[80%] mx-auto h-[15%] flex items-center">
-    <MessageInput @create="sendNewMessage" v-model="inputValue" :disabled="messageStore.isMessageLoading" />
+    <MessageInput  @create="sendNewMessage" v-model="inputValue" :disabled="messageStore.isMessageLoading" />
   </div>
-  </template>
-
+</template>
 <script lang="ts" setup>
+import { ref, watch, onMounted, computed, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import MessageInput from '@/components/MessageInput.vue'
-import MessageList from '@/components/MessageList.vue';
-import { useRoute } from 'vue-router';
-import { computed, onMounted, ref } from 'vue';
-import { MessageProps } from '@/types';
-import { watch } from 'vue';
-import { db } from '@/db';
-import { useConversationStore } from '@/stores/conversation';
-import { useMessageStore } from '@/stores/message';
+import MessageList from '@/components/MessageList.vue'
+import { useConversationStore } from '@/stores/conversation'
+import { useMessageStore } from '@/stores/message'
+import { useProviderStore } from '@/stores/provider'
+import { MessageListInstance, MessageProps } from '@/types'
 
+const inputValue = ref('')
 const route = useRoute()
 const conversationStore = useConversationStore()
 const messageStore = useMessageStore()
-let conversationId = ref(parseInt(route.params.id as string))
+const provdierStore = useProviderStore()
 const filteredMessages = computed(() => messageStore.items)
-const conversation = computed(() => conversationStore.getConversationById(conversationId.value))
-const initMessageId = parseInt(route.query.init as string)
-let lastQuestion = computed(() => messageStore.getLastQuestion(conversationId.value))
-const inputValue = ref('')
-
 const sendedMessages = computed(() => filteredMessages.value
-  .filter(message => message.status !== 'loading')
+  .filter(message => message.status!== 'loading')
   .map(message => {
     return {
-      role: message.type === 'question' ? 'user': 'assistant',
-      content: message.content,
+      role: message.type === 'question' ? 'user' : 'assistant',
+      content: message.content
     }
   })
 )
+let conversationId = ref(parseInt(route.params.id as string))
+const initMessageId = parseInt(route.query.init as string)
+const conversation = computed(() => conversationStore.getConversationById(conversationId.value))
+const messageListRef = ref<MessageListInstance>()
 
 const sendNewMessage = async (question: string) => {
   if (question) {
@@ -68,8 +66,9 @@ const creatingInitialMessage = async () => {
   }
   const newMessageId = await messageStore.createMessage(createdData)
   if (conversation.value) {
-    const provider = await db.providers.where({ id: conversation.value.providerId }).first()
+    const provider = provdierStore.getProviderById(conversation.value.providerId)
     if (provider) {
+      console.log('provider', provider)
       await window.electronAPI.startChat({
         messageId: newMessageId,
         providerName: provider.name,
@@ -80,13 +79,26 @@ const creatingInitialMessage = async () => {
   }
 }
 
+const messageScrollToBottom = async () => {
+  console.log('messageScrollToBottom')
+  await nextTick()
+  if (messageListRef.value) {
+    messageListRef.value.ref.scrollIntoView({
+      block: 'end',
+      behavior: 'smooth',
+    })
+  }
+}
+
 watch(() => route.params.id, async (newId: string) => {
   conversationId.value = parseInt(newId)
   await messageStore.fetchMessagesByConversation(conversationId.value)
+  await messageScrollToBottom()
 })
 
 onMounted(async () => {
   await messageStore.fetchMessagesByConversation(conversationId.value)
+  await messageScrollToBottom()
   if (initMessageId) {
     await creatingInitialMessage()
   }
