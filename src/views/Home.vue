@@ -35,9 +35,18 @@ const modelInfo = computed(() => {
   }
 })
 
-const createConversation = async (question: string) => {
+const createConversation = async (question: string, imagePath?: string) => {
   const { providerId, selectedModel } = modelInfo.value
   const currentDate = new Date().toISOString()
+  let copiedImagePath: string | undefined
+  if (imagePath) {
+    try {
+      copiedImagePath = await window.electronAPI.copyImageToUserDir(imagePath)
+      console.log('Image copied to user directory:', copiedImagePath)
+    } catch (error) {
+      console.error('Error copying image:', error)
+    }
+  }
   const conversationId = await conversationStore.createConversation({
     title: question,
     providerId,
@@ -51,6 +60,7 @@ const createConversation = async (question: string) => {
     createdAt: currentDate,
     updatedAt: currentDate,
     type: 'question',
+    ...(copiedImagePath && { imagePath: copiedImagePath }),
   })
   router.push(`/conversation/${conversationId}?init=${newMessageId}`)
 }

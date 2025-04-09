@@ -13,8 +13,8 @@
           <SelectViewport class="p-2">
             <div v-for="provider in items">
               <SelectLabel class="flex items-center px-6 h-7 text-gray-500">
-                <img :src="provider.avatar" :alt="provider.name" class="h-5 w-5 mr-2 rounded">
-                {{provider.name}}
+                <img :src="provider.avatar" :alt="provider.title" class="h-5 w-5 mr-2 rounded">
+                {{provider.title}}
               </SelectLabel>
               <SelectGroup>
                 <SelectItem 

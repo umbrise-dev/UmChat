@@ -18,7 +18,7 @@ import MessageList from '@/components/MessageList.vue'
 import { useConversationStore } from '@/stores/conversation'
 import { useMessageStore } from '@/stores/message'
 import { useProviderStore } from '@/stores/provider'
-import { MessageListInstance, MessageProps } from '@/types'
+import { MessageListInstance, MessageProps, MessageStatus } from '@/types'
 
 const inputValue = ref('')
 const route = useRoute()
@@ -31,7 +31,8 @@ const sendedMessages = computed(() => filteredMessages.value
   .map(message => {
     return {
       role: message.type === 'question' ? 'user' : 'assistant',
-      content: message.content
+      content: message.content,
+      ...(message.imagePath && { imagePath: message.imagePath }),
     }
   })
 )
@@ -40,8 +41,17 @@ const initMessageId = parseInt(route.query.init as string)
 const conversation = computed(() => conversationStore.getConversationById(conversationId.value))
 const messageListRef = ref<MessageListInstance>()
 
-const sendNewMessage = async (question: string) => {
+const sendNewMessage = async (question: string, imagePath?: string) => {
   if (question) {
+    let copiedImagePath: string | undefined
+    if (imagePath) {
+      try {
+        copiedImagePath = await window.electronAPI.copyImageToUserDir(imagePath)
+        console.log('Image copied to user directory:', copiedImagePath)
+      } catch (error) {
+        console.error('Error copying image:', error)
+      }
+    }
     const date = new Date().toISOString()
     await messageStore.createMessage({
       content: question,
@@ -49,6 +59,7 @@ const sendNewMessage = async (question: string) => {
       createdAt: date,
       updatedAt: date,
       type: 'question',
+      ...(copiedImagePath && { imagePath: copiedImagePath }),
     })
     inputValue.value = ''
     creatingInitialMessage()
@@ -104,6 +115,7 @@ onMounted(async () => {
   }
 
   let currentMessageListHeight = 0
+  let streamContent = ''
   const checkAndScrollToBottom = async () => {
     if (messageListRef.value) {
       const newHeight = messageListRef.value.ref.clientHeight
@@ -117,9 +129,19 @@ onMounted(async () => {
 
   window.electronAPI.onUpdateMessage(async (streamData) => {
     console.log('streamData', streamData)
-    messageStore.updateMessage(streamData)
+    const { messageId, data } = streamData
+    streamContent += data.result
+    const updatedData = {
+      content: streamContent,
+      status: data.is_end ? 'finished' : 'streaming' as MessageStatus,
+      updatedAt: new Date().toISOString(),
+    }
+    await messageStore.updateMessage(messageId, updatedData)
     await nextTick()
     checkAndScrollToBottom()
+    if (data.is_end) {
+      streamContent = ''
+    }
   })
 })
 </script>

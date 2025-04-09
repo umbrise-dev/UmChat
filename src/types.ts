@@ -27,12 +27,14 @@ export interface MessageProps {
   status?: MessageStatus;
   createdAt: string;
   updatedAt: string;
+  imagePath?: string;
 }
 
 export interface CreateChatProps {
   messages: {
     role: string;
     content: string;
+    imagePath?: string;
   }[];
   providerName: string;
   selectedModel: string;

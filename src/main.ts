@@ -1,9 +1,24 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, net, protocol } from 'electron';
 import path from 'path';
-import 'dotenv/config'
+import 'dotenv/config';
 import { CreateChatProps } from "./types";
 import { ChatCompletion } from '@baiducloud/qianfan';
 import OpenAI from 'openai';
+import fs from 'fs/promises';
+import { convertMessages } from './helper';
+import url, { pathToFileURL } from 'url';
+
+// Register schemes as privileged before the app is ready
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'safe-file',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+    },
+  },
+]);
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -20,48 +35,62 @@ const createWindow = async () => {
     },
   });
 
+  ipcMain.handle('copy-image-to-user-dir', async (event, sourcePath: string) => {
+    const userDataPath = app.getPath('userData');
+    const imagesDir = path.join(userDataPath, 'images');
+    await fs.mkdir(imagesDir, { recursive: true });
+    const fileNames = path.basename(sourcePath);
+    const targetPath = path.join(imagesDir, fileNames);
+    await fs.copyFile(sourcePath, targetPath);
+    return targetPath;
+  });
+
   ipcMain.on('start-chat', async (event, data: CreateChatProps) => {
-    const { providerName, messages, messageId, selectedModel } = data
+    const { providerName, messages, messageId, selectedModel } = data;
+    const convertedMessages = await convertMessages(messages);
     if (providerName === 'qianfan') {
-      const client = new ChatCompletion()
-      const stream = await client.chat({
-        messages: messages as any,
-        stream: true,
-      }, selectedModel)
+      const client = new ChatCompletion();
+      const stream = await client.chat(
+        {
+          messages: convertedMessages as any,
+          stream: true,
+        },
+        selectedModel
+      );
       for await (const chunk of stream as any) {
-        const { is_end, result } = chunk
+        const { is_end, result } = chunk;
         const content = {
           messageId,
           data: {
             is_end,
             result,
-          }
-        }
-        mainWindow.webContents.send('update-message', content)
+          },
+        };
+        mainWindow.webContents.send('update-message', content);
       }
     } else if (providerName === 'dashscope') {
       const client = new OpenAI({
         apiKey: process.env['ALI_API_KEY'],
-        baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
-      })
+        baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      });
       const stream = await client.chat.completions.create({
-        messages: messages as any,
+        messages: convertedMessages as any,
         model: selectedModel,
-        stream: true
-      })
+        stream: true,
+      });
       for await (const chunk of stream) {
-        const choice = chunk.choices[0]
+        const choice = chunk.choices[0];
         const content = {
           messageId,
           data: {
             is_end: choice.finish_reason === 'stop',
-            result: choice.delta.content || ''
-          }
-        }
-        mainWindow.webContents.send('update-message', content)
+            result: choice.delta.content || '',
+          },
+        };
+        mainWindow.webContents.send('update-message', content);
       }
     }
-  })
+  });
 
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -96,5 +125,16 @@ app.on('activate', () => {
   }
 });
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
+app.whenReady().then(() => {
+  protocol.handle('safe-file', async (request) => {
+    const userDataPath = app.getPath('userData')
+    const imageDir = path.join(userDataPath, 'images')
+    const filePath = path.join(
+      decodeURIComponent(request.url.slice('safe-file:/'.length))
+    )
+    const filename = path.basename(filePath)
+    const fileAddr = path.join(imageDir, filename)
+    const newFilePath = pathToFileURL(fileAddr).toString()
+    return net.fetch(newFilePath)
+  })
+});
