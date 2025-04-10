@@ -6,7 +6,8 @@ import { ChatCompletion } from '@baiducloud/qianfan';
 import OpenAI from 'openai';
 import fs from 'fs/promises';
 import { convertMessages } from './helper';
-import url, { pathToFileURL } from 'url';
+import { pathToFileURL } from 'url';
+import { createProvider } from './providers/createProivder';
 
 // Register schemes as privileged before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -47,48 +48,14 @@ const createWindow = async () => {
 
   ipcMain.on('start-chat', async (event, data: CreateChatProps) => {
     const { providerName, messages, messageId, selectedModel } = data;
-    const convertedMessages = await convertMessages(messages);
-    if (providerName === 'qianfan') {
-      const client = new ChatCompletion();
-      const stream = await client.chat(
-        {
-          messages: convertedMessages as any,
-          stream: true,
-        },
-        selectedModel
-      );
-      for await (const chunk of stream as any) {
-        const { is_end, result } = chunk;
-        const content = {
-          messageId,
-          data: {
-            is_end,
-            result,
-          },
-        };
-        mainWindow.webContents.send('update-message', content);
+    const provider = createProvider(providerName)
+    const stream = await provider.chat(messages, selectedModel)
+    for await(const chunk of stream) {
+      const content = {
+        messageId,
+        data: chunk,
       }
-    } else if (providerName === 'dashscope') {
-      const client = new OpenAI({
-        apiKey: process.env['ALI_API_KEY'],
-        baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      });
-      const stream = await client.chat.completions.create({
-        messages: convertedMessages as any,
-        model: selectedModel,
-        stream: true,
-      });
-      for await (const chunk of stream) {
-        const choice = chunk.choices[0];
-        const content = {
-          messageId,
-          data: {
-            is_end: choice.finish_reason === 'stop',
-            result: choice.delta.content || '',
-          },
-        };
-        mainWindow.webContents.send('update-message', content);
-      }
+      mainWindow.webContents.send('update-message', content)
     }
   });
 
