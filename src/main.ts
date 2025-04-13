@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { CreateChatProps } from "./types";
 import fs from 'fs/promises';
 import { pathToFileURL } from 'url';
+import util from 'util';
 import { createProvider } from './providers/createProivder';
 import { configManager } from './config';
 
@@ -26,7 +27,7 @@ if (require('electron-squirrel-startup')) {
 
 const createWindow = async () => {
   const config = await configManager.load()
-  console.log('config', config)
+  console.log('config:', util.inspect(config, { depth: null, colors: true }))
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
