@@ -2,12 +2,10 @@ import { app, BrowserWindow, ipcMain, net, protocol } from 'electron';
 import path from 'path';
 import 'dotenv/config';
 import { CreateChatProps } from "./types";
-import { ChatCompletion } from '@baiducloud/qianfan';
-import OpenAI from 'openai';
 import fs from 'fs/promises';
-import { convertMessages } from './helper';
 import { pathToFileURL } from 'url';
 import { createProvider } from './providers/createProivder';
+import { configManager } from './config';
 
 // Register schemes as privileged before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -27,6 +25,9 @@ if (require('electron-squirrel-startup')) {
 }
 
 const createWindow = async () => {
+  const config = await configManager.load()
+  console.log('config', config)
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1024,
@@ -58,6 +59,14 @@ const createWindow = async () => {
       mainWindow.webContents.send('update-message', content)
     }
   });
+
+  ipcMain.handle('get-config', () => {
+    return configManager.get()
+  })
+
+  ipcMain.handle('update-config', async (event, newConfig) => {
+    return await configManager.update(newConfig)
+  })
 
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
