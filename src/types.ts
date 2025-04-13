@@ -18,7 +18,7 @@ export interface ProviderProps {
   models: string[];
 }
 
-export type MessageStatus = 'loading' | 'streaming' | 'finished';
+export type MessageStatus = 'loading' | 'streaming' | 'finished' | 'error';
 export interface MessageProps {
   id: number;
   content: string;
@@ -48,6 +48,7 @@ export interface UpdateStreamData {
   data: {
     is_end: boolean;
     result: string;
+    is_error?: boolean;
   }
 }
 
