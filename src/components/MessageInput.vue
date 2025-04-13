@@ -17,7 +17,7 @@
       />
       <input class="outline-none border-0 flex-1 bg-white focus:ring-0" type="text" v-model="model" :disabled="disabled">
       <Button icon-name="radix-icons:paper-plane" @click="onCreate" :disabled="disabled">
-        发送
+        {{ t('common.send') }}
       </Button>
     </div>
   </div>
@@ -27,6 +27,9 @@
 import Button from '@/components/Button.vue'
 import { Icon } from '@iconify/vue';
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n()
 
 const props = defineProps<{
   disabled?: boolean;
