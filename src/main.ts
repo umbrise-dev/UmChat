@@ -1,13 +1,10 @@
-import { app, BrowserWindow, ipcMain, net, protocol } from 'electron';
+import { app, BrowserWindow, net, protocol } from 'electron';
 import path from 'path';
 import 'dotenv/config';
-import { CreateChatProps } from "./types";
-import fs from 'fs/promises';
 import { pathToFileURL } from 'url';
-import util from 'util';
-import { createProvider } from './providers/createProivder';
 import { configManager } from './config';
-import { createMenu, updateMenu, createContextMenu } from './menu';
+import { createMenu } from './menu';
+import { setupIPC } from './ipc';
 
 // Register schemes as privileged before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -41,70 +38,14 @@ const createWindow = async () => {
   const mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
+    title: 'Vue Electron Chat',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
 
   createMenu(mainWindow)
-
-  ipcMain.on('show-context-menu', (event, id) => {
-    const win = BrowserWindow.fromWebContents(event.sender)
-    if (!win) {
-      return
-    }
-    createContextMenu(win, id)
-  })
-
-  ipcMain.handle('copy-image-to-user-dir', async (event, sourcePath: string) => {
-    const userDataPath = app.getPath('userData');
-    const imagesDir = path.join(userDataPath, 'images');
-    await fs.mkdir(imagesDir, { recursive: true });
-    const fileNames = path.basename(sourcePath);
-    const targetPath = path.join(imagesDir, fileNames);
-    await fs.copyFile(sourcePath, targetPath);
-    return targetPath;
-  });
-
-  ipcMain.on('start-chat', async (event, data: CreateChatProps ) => {
-    console.log('hey', data)
-    const { providerName, messages, messageId, selectedModel } = data
-    try {
-      const provider = createProvider(providerName)
-      const stream = await provider.chat(messages, selectedModel)
-      for await (const chunk of stream) {
-        console.log('the chunk', chunk)
-        const content = {
-          messageId,
-          data: chunk
-        }
-        mainWindow.webContents.send('update-message', content)
-      }
-    } catch (error) {
-      console.error('Chat error:', error)
-      const errorContent = {
-        messageId,
-        data: {
-          is_end: true,
-          result: error instanceof Error ? error.message : '与AI服务通信时发生错误',
-          is_error: true
-        }
-      }
-      mainWindow.webContents.send('update-message', errorContent)
-    }
-  })
-
-  ipcMain.handle('get-config', () => {
-    return configManager.get()
-  })
-
-  ipcMain.handle('update-config', async (event, newConfig) => {
-    const updatedConfig = await configManager.update(newConfig)
-    if (newConfig.language) {
-      updateMenu(mainWindow)
-    }
-    return updatedConfig
-  })
+  setupIPC(mainWindow)
 
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -114,7 +55,9 @@ const createWindow = async () => {
   }
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
 };
 
 // This method will be called when Electron has finished
