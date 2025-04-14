@@ -11,19 +11,19 @@ import path from 'path';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    name: 'vue-electron-chat',
+    name: 'um-chat',
     icon: './assets/icon',
   },
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({
-      name: 'vue-electron-chat',
+      name: 'um-chat',
       // Windows 安装包配置
       setupIcon: './assets/icon.ico',
       // loadingGif: './assets/installer.gif', // 可选：安装时显示的 gif
       iconUrl: 'file://' + path.resolve('./assets/icon.ico'), // 使用本地图标
       // 自定义安装程序选项
-      setupExe: 'vue-electron-chat-setup.exe', // 安装文件名
+      setupExe: 'um-chat-setup.exe', // 安装文件名
       noMsi: true,
     }),
     new MakerZIP({}, ['darwin']),

@@ -1,8 +1,8 @@
 {
-  "name": "vue-electron-chat",
-  "productName": "vue-electron-chat",
+  "name": "um-chat",
+  "productName": "UmChat",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "大模型桌面聊天应用",
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",

@@ -38,7 +38,7 @@ const createWindow = async () => {
   const mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
-    title: 'Vue Electron Chat',
+    title: 'UmChat',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
