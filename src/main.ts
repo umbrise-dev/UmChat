@@ -7,6 +7,7 @@ import { pathToFileURL } from 'url';
 import util from 'util';
 import { createProvider } from './providers/createProivder';
 import { configManager } from './config';
+import { createMenu, updateMenu, createContextMenu } from './menu';
 
 // Register schemes as privileged before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -34,8 +35,7 @@ if (process.platform === 'win32') {
 }
 
 const createWindow = async () => {
-  const config = await configManager.load()
-  console.log('config:', util.inspect(config, { depth: null, colors: true }))
+  await configManager.load()
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -45,6 +45,16 @@ const createWindow = async () => {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
+
+  createMenu(mainWindow)
+
+  ipcMain.on('show-context-menu', (event, id) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) {
+      return
+    }
+    createContextMenu(win, id)
+  })
 
   ipcMain.handle('copy-image-to-user-dir', async (event, sourcePath: string) => {
     const userDataPath = app.getPath('userData');
@@ -89,7 +99,11 @@ const createWindow = async () => {
   })
 
   ipcMain.handle('update-config', async (event, newConfig) => {
-    return await configManager.update(newConfig)
+    const updatedConfig = await configManager.update(newConfig)
+    if (newConfig.language) {
+      updateMenu(mainWindow)
+    }
+    return updatedConfig
   })
 
   // and load the index.html of the app.

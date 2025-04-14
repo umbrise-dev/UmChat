@@ -31,14 +31,22 @@ import { db, initProviders } from "@/db";
 import { useConversationStore } from "./stores/conversation";
 import { useProviderStore } from "./stores/provider";
 import { useI18n } from 'vue-i18n';
+import { initI18n } from './i18n'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const conversationStore = useConversationStore()
 const providerStore = useProviderStore()
 const items = computed(() => conversationStore.items)
 const { t } = useI18n()
 
+window.electronAPI.onMenuNewConversation(() => {
+  router.push('/')
+})
+
 onMounted(async() => {
   await initProviders()
+  await initI18n()
   conversationStore.fetchConversations()
   providerStore.fetchProviders()
 })
