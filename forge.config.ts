@@ -7,6 +7,9 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import path from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -20,15 +23,27 @@ const config: ForgeConfig = {
       name: 'um-chat',
       // Windows 安装包配置
       setupIcon: './assets/icon.ico',
-      // loadingGif: './assets/installer.gif', // 可选：安装时显示的 gif
-      iconUrl: 'file://' + path.resolve('./assets/icon.ico'), // 使用本地图标
-      // 自定义安装程序选项
-      setupExe: 'um-chat-setup.exe', // 安装文件名
+            iconUrl: 'file://' + path.resolve('./assets/icon.ico'),
+      setupExe: 'um-chat-setup.exe',
       noMsi: true,
     }),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({}),
+  ],
+  publishers: [
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: {
+          owner: 'umbrise-dev',
+          name: 'UmChat',
+        },
+        prerelease: false,
+        draft: true,
+        authToken: process.env.GITHUB_TOKEN
+      }
+    }
   ],
   plugins: [
     new VitePlugin({
